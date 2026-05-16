@@ -99,11 +99,9 @@ def get_local_ip():
 
 # --- SIDEBAR PARA CÓDIGO QR ---
 with st.sidebar:
-    st.markdown("### 📱 Monitoreo Móvil")
-    st.write("Escanea este código para llevar el dashboard en tu celular o tablet (requiere Wi-Fi local).")
-    
-    local_ip = get_local_ip()
-    dashboard_url = f"http://{local_ip}:8501"
+    # URLs Públicas de la Nube
+    dashboard_url = "https://proyectodetitulo-slot-management-jvillalobosp2-gwoohdfkxqqvjru.streamlit.app/"
+    portal_url = "https://proyectodetitulo-slot-management-jvillalobosp2-gwoohdfkxqqvjru.streamlit.app/Portal_Transportistas"
     
     qr = qrcode.QRCode(version=1, box_size=10, border=4)
     qr.add_data(dashboard_url)
@@ -114,12 +112,20 @@ with st.sidebar:
     img.save(buf, format="PNG")
     byte_im = buf.getvalue()
     
-    st.image(byte_im, caption=dashboard_url, use_container_width=True)
+    st.image(byte_im, caption="DASHBOARD EN VIVO (PÚBLICO)", use_container_width=True)
     st.markdown("---")
     
     st.markdown("### 🚚 Portal Transportistas")
-    portal_url = f"http://{local_ip}:8502"
-    st.info(f"URL de Agendamiento:\n{portal_url}")
+    st.info(f"Link de Agendamiento:\n{portal_url}")
+    
+    qr_p = qrcode.QRCode(version=1, box_size=10, border=4)
+    qr_p.add_data(portal_url)
+    qr_p.make(fit=True)
+    img_p = qr_p.make_image(fill_color="black", back_color="white")
+    
+    buf_p = io.BytesIO()
+    img_p.save(buf_p, format="PNG")
+    st.image(buf_p.getvalue(), caption="PORTAL MÓVIL (PÚBLICO)", use_container_width=True)
 
 st.title("🏭 Panel de Monitoreo Dinámico - Planta FP1 Talcahuano")
 
