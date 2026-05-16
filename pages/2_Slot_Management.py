@@ -7,6 +7,25 @@ import qrcode
 from PIL import Image
 import io
 import os
+import requests
+
+def send_telegram_notification(patente, cliente, fecha_hora, operacion):
+    # IMPORTANTE: Reemplaza TU_CHAT_ID_AQUI con el ID que te dio @userinfobot
+    TOKEN = "8842761101:AAEohY3XHP_vIBTg30EdEysjA7ISWm2VQMk"
+    CHAT_ID = "5859396891"
+    
+    texto = f"🏢 *NUEVO AGENDAMIENTO INTERNO*\n\n" \
+            f"🤝 *Cliente:* {cliente}\n" \
+            f"🆔 *Patente:* {patente}\n" \
+            f"⚙️ *Operación:* {operacion}\n" \
+            f"⏰ *Cita:* {fecha_hora}\n\n" \
+            f"🖥️ _Registrado por Personal de Planta_"
+            
+    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+    try:
+        requests.post(url, json={'chat_id': CHAT_ID, 'text': texto, 'parse_mode': 'Markdown'}, timeout=5)
+    except:
+        pass
 
 # Configuración de página
 st.set_page_config(page_title="Slot Management FP1", layout="wide", page_icon="📅")
@@ -159,6 +178,15 @@ with tabs[1]:
                     ''', (patente.upper(), cliente, tipo_op, tipo_carga, fecha_hora.strftime("%Y-%m-%d %H:%M:%S"), 'Programado'))
                     conn.commit()
                     st.success(f"✅ Agendamiento para {patente} registrado con éxito el {fecha_hora.strftime('%Y-%m-%d a las %H:%M')}.")
+                    
+                    # Notificación Telegram
+                    send_telegram_notification(
+                        patente.upper(), 
+                        cliente, 
+                        fecha_hora.strftime('%d-%m-%Y %H:%M'), 
+                        tipo_op
+                    )
+                    
                     st.rerun()
                     
     with col_qr:

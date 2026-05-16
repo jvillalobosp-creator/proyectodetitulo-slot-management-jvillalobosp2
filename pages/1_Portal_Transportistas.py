@@ -4,6 +4,25 @@ from datetime import datetime, timedelta
 import qrcode
 import io
 import socket
+import requests
+
+def send_telegram_notification(patente, cliente, fecha_hora, operacion):
+    # IMPORTANTE: Debes configurar tu TOKEN y CHAT_ID reales para que funcione
+    TOKEN = "8842761101:AAEohY3XHP_vIBTg30EdEysjA7ISWm2VQMk" 
+    CHAT_ID = "5859396891"
+    
+    texto = f"🚛 *NUEVO AGENDAMIENTO MÓVIL*\n\n" \
+            f"🏢 *Cliente:* {cliente}\n" \
+            f"🆔 *Patente:* {patente}\n" \
+            f"⚙️ *Operación:* {operacion}\n" \
+            f"⏰ *Cita:* {fecha_hora}\n\n" \
+            f"📱 _Enviado desde el Portal de Transportistas_"
+            
+    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+    try:
+        requests.post(url, json={'chat_id': CHAT_ID, 'text': texto, 'parse_mode': 'Markdown'}, timeout=5)
+    except:
+        pass
 
 def get_local_ip():
     try:
@@ -92,6 +111,15 @@ with col_izq:
                     ''', (patente.upper(), cliente, tipo_op, tipo_carga, fecha_hora_sel.strftime("%Y-%m-%d %H:%M:%S"), 'Programado'))
                     conn.commit()
                     st.success(f"✅ ¡Éxito! Cita agendada para la patente {patente.upper()} el día {fecha_hora_sel.strftime('%d-%m-%Y a las %H:%M')}.")
+                    
+                    # Enviar notificación a Telegram
+                    send_telegram_notification(
+                        patente.upper(), 
+                        cliente, 
+                        fecha_hora_sel.strftime('%d-%m-%Y %H:%M'), 
+                        tipo_op
+                    )
+                    
                     st.balloons()
     st.markdown('</div>', unsafe_allow_html=True)
 
