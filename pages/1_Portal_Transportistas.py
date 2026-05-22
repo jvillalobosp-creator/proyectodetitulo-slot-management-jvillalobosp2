@@ -6,6 +6,106 @@ import io
 import socket
 import requests
 
+def send_email_notification(patente, cliente, fecha_hora, operacion, tipo_origen):
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+
+    # Intentar obtener credenciales desde st.secrets, o usar valores por defecto/configurables
+    try:
+        sender_email = st.secrets.get("EMAIL_SENDER", "jvpdashboard@gmail.com")
+        sender_password = st.secrets.get("EMAIL_PASSWORD", "")
+    except Exception:
+        sender_email = "jvpdashboard@gmail.com"
+        sender_password = ""
+
+    # Si no hay contraseña configurada en secrets ni en código, no intentamos enviar para evitar esperas/bloqueos
+    if not sender_password:
+        print("⚠️ Advertencia: No se ha configurado la contraseña de aplicación de correo (EMAIL_PASSWORD) en st.secrets.")
+        return
+
+    asunto = f"🚛 Nuevo Agendamiento ({tipo_origen}) - Patente {patente}"
+    receiver_email = "jvpdashboard@gmail.com"
+    
+    cuerpo_html = f"""
+    <html>
+    <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; color: #333333;">
+        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-top: 5px solid #00E5FF;">
+            <!-- Encabezado -->
+            <div style="background: linear-gradient(135deg, #1e1e2e 0%, #2d2d3f 100%); padding: 30px 20px; text-align: center; color: #ffffff;">
+                <h1 style="margin: 0; font-size: 24px; letter-spacing: 1px; color: #00E5FF;">🚛 NUEVO AGENDAMIENTO</h1>
+                <p style="margin: 5px 0 0 0; font-size: 14px; color: #a0a0b0; text-transform: uppercase;">Notificación de Sistema - Planta FP1</p>
+            </div>
+            
+            <!-- Contenido principal -->
+            <div style="padding: 30px 25px;">
+                <p style="font-size: 16px; line-height: 1.6; color: #4e5d6c; margin-top: 0;">
+                    Estimado Administrador, se ha registrado exitosamente una nueva cita en el sistema de slots. A continuación se presentan los detalles del agendamiento:
+                </p>
+                
+                <div style="background-color: #f8fafc; border-radius: 8px; padding: 20px; border: 1px solid #e2e8f0; margin: 25px 0;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr style="border-bottom: 1px solid #edf2f7;">
+                            <td style="padding: 12px 0; font-weight: bold; color: #4a5568; width: 40%; font-size: 14px;">🏢 Empresa / Cliente:</td>
+                            <td style="padding: 12px 0; color: #1a202c; font-size: 15px;">{cliente}</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #edf2f7;">
+                            <td style="padding: 12px 0; font-weight: bold; color: #4a5568; font-size: 14px;">🆔 Patente:</td>
+                            <td style="padding: 12px 0; color: #1a202c; font-size: 15px; font-weight: bold;">{patente}</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #edf2f7;">
+                            <td style="padding: 12px 0; font-weight: bold; color: #4a5568; font-size: 14px;">⚙️ Operación:</td>
+                            <td style="padding: 12px 0; color: #1a202c; font-size: 15px;">
+                                <span style="background-color: {'#eef2ff' if operacion == 'Recepción' else '#faf5ff'}; color: {'#3730a3' if operacion == 'Recepción' else '#6b21a8'}; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 13px;">
+                                    {operacion}
+                                </span>
+                            </td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #edf2f7;">
+                            <td style="padding: 12px 0; font-weight: bold; color: #4a5568; font-size: 14px;">⏰ Fecha y Hora:</td>
+                            <td style="padding: 12px 0; color: #007BFF; font-size: 15px; font-weight: bold;">{fecha_hora}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 12px 0; font-weight: bold; color: #4a5568; font-size: 14px;">📱 Origen del Registro:</td>
+                            <td style="padding: 12px 0; color: #718096; font-size: 14px; font-style: italic;">{tipo_origen}</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <p style="font-size: 14px; color: #718096; line-height: 1.5; margin-bottom: 0;">
+                    Por favor, asegúrese de que el andén correspondiente esté preparado a la hora citada para mantener la fluidez logística y la cadena de frío.
+                </p>
+            </div>
+            
+            <!-- Pie de página -->
+            <div style="background-color: #f7fafc; padding: 20px; text-align: center; border-top: 1px solid #edf2f7;">
+                <p style="margin: 0; font-size: 12px; color: #a0aec0; font-weight: bold;">SISTEMA DE SLOT MANAGEMENT - PLANTA FP1 TALCAHUANO</p>
+                <p style="margin: 5px 0 0 0; font-size: 11px; color: #cbd5e0;">
+                    Desarrollado por Jorge Villalobos Padilla<br>
+                    Ingeniero Industrial - Universidad Católica de la Santísima Concepción
+                </p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = asunto
+    msg["From"] = sender_email
+    msg["To"] = receiver_email
+    msg.attach(MIMEText(cuerpo_html, "html"))
+    
+    try:
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
+        server.login(sender_email, sender_password)
+        server.sendmail(sender_email, [receiver_email], msg.as_string())
+        server.quit()
+        print("✅ Correo enviado exitosamente a jvpdashboard@gmail.com")
+    except Exception as e:
+        print(f"❌ Error al enviar correo de notificación: {e}")
+
 def send_telegram_notification(patente, cliente, fecha_hora, operacion):
     # IMPORTANTE: Debes configurar tu TOKEN y CHAT_ID reales para que funcione
     TOKEN = "8842761101:AAEohY3XHP_vIBTg30EdEysjA7ISWm2VQMk" 
@@ -23,6 +123,9 @@ def send_telegram_notification(patente, cliente, fecha_hora, operacion):
         requests.post(url, json={'chat_id': CHAT_ID, 'text': texto, 'parse_mode': 'Markdown'}, timeout=5)
     except:
         pass
+        
+    # Enviar notificación a correo electrónico
+    send_email_notification(patente, cliente, fecha_hora, operacion, "Portal Móvil - Transportistas")
 
 def get_local_ip():
     try:
@@ -90,7 +193,7 @@ with col_izq:
         with col3:
             fecha = st.date_input("Fecha de Llegada", min_value=min_fecha, max_value=max_fecha, value=min_fecha)
         with col4:
-            hora = st.time_input("Hora Estimada", step=1800)
+            hora = st.time_input("Hora Estimada", step=900)
         
         submitted = st.form_submit_button("Confirmar Agendamiento")
         
@@ -104,23 +207,59 @@ with col_izq:
                 if diferencia_horas < 24 or diferencia_horas > 48:
                     st.error(f"❌ La fecha seleccionada ({fecha_hora_sel.strftime('%d-%m %H:%M')}) no cumple con la regla de 24 a 48 horas de anticipación.")
                 else:
-                    cursor = conn.cursor()
-                    cursor.execute('''
-                        INSERT INTO Agendamientos (patente, cliente, tipo_operacion, tipo_carga, fecha_hora, estado)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                    ''', (patente.upper(), cliente, tipo_op, tipo_carga, fecha_hora_sel.strftime("%Y-%m-%d %H:%M:%S"), 'Programado'))
-                    conn.commit()
-                    st.success(f"✅ ¡Éxito! Cita agendada para la patente {patente.upper()} el día {fecha_hora_sel.strftime('%d-%m-%Y a las %H:%M')}.")
+                    fecha_hora_str = fecha_hora_sel.strftime("%Y-%m-%d %H:%M:%S")
                     
-                    # Enviar notificación a Telegram
-                    send_telegram_notification(
-                        patente.upper(), 
-                        cliente, 
-                        fecha_hora_sel.strftime('%d-%m-%Y %H:%M'), 
-                        tipo_op
-                    )
-                    
-                    st.balloons()
+                    is_madrugada = fecha_hora_sel.hour >= 23 or fecha_hora_sel.hour < 7
+                    if is_madrugada and tipo_op == "Despacho":
+                        st.error("❌ El turno de madrugada (23:00 a 07:00) está restringido exclusivamente para operaciones de Recepción (Descarga).")
+                    else:
+                        def is_slot_available(dt, carga):
+                            duracion = 285 if carga == 'Suelta' else 105
+                            dt_end = dt + timedelta(minutes=duracion)
+                            cursor.execute("""
+                                SELECT COUNT(*) FROM Agendamientos 
+                                WHERE fecha_hora < ? 
+                                  AND (
+                                    CASE WHEN tipo_carga = 'Suelta' THEN datetime(fecha_hora, '+285 minutes')
+                                         ELSE datetime(fecha_hora, '+105 minutes')
+                                    END
+                                  ) > ?
+                            """, (dt_end.strftime("%Y-%m-%d %H:%M:%S"), dt.strftime("%Y-%m-%d %H:%M:%S")))
+                            return cursor.fetchone()[0] < 4
+
+                        cursor = conn.cursor()
+                        if not is_slot_available(fecha_hora_sel, tipo_carga):
+                            next_slot = fecha_hora_sel
+                            while True:
+                                next_slot += timedelta(minutes=15)
+                                if tipo_op == "Despacho" and (next_slot.hour >= 23 or next_slot.hour < 7):
+                                    if next_slot.hour < 7:
+                                        next_slot = next_slot.replace(hour=7, minute=0)
+                                    else:
+                                        next_slot = next_slot.replace(hour=7, minute=0) + timedelta(days=1)
+                                
+                                if is_slot_available(next_slot, tipo_carga):
+                                    break
+                            
+                            st.error(f"❌ El horario choca con operaciones en curso para carga {tipo_carga}.")
+                            st.warning(f"💡 Próximo horario libre disponible: **{next_slot.strftime('%d-%m-%Y a las %H:%M')}**")
+                        else:
+                            cursor.execute('''
+                                INSERT INTO Agendamientos (patente, cliente, tipo_operacion, tipo_carga, fecha_hora, estado)
+                                VALUES (?, ?, ?, ?, ?, ?)
+                            ''', (patente.upper(), cliente, tipo_op, tipo_carga, fecha_hora_str, 'Programado'))
+                            conn.commit()
+                            st.success(f"✅ ¡Éxito! Cita agendada para la patente {patente.upper()} el día {fecha_hora_sel.strftime('%d-%m-%Y a las %H:%M')}.")
+                        
+                        # Enviar notificación a Telegram
+                        send_telegram_notification(
+                            patente.upper(), 
+                            cliente, 
+                            fecha_hora_sel.strftime('%d-%m-%Y %H:%M'), 
+                            tipo_op
+                        )
+                        
+                        st.balloons()
     st.markdown('</div>', unsafe_allow_html=True)
 
 with col_der:
