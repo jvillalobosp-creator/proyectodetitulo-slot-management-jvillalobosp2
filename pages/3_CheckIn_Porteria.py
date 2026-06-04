@@ -39,7 +39,7 @@ st.markdown('<div class="mobile-header">🛑 Control de Ingreso FP1</div>', unsa
 st.markdown('<div class="mobile-subheader">Notifica tu llegada al patio de maniobras</div>', unsafe_allow_html=True)
 
 def setup_db():
-    conn = sqlite3.connect("planta_fp1.db")
+    conn = sqlite3.connect("planta_fp1.db", timeout=30.0)
     return conn
 
 conn = setup_db()

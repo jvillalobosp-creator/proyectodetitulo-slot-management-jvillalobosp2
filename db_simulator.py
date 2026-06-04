@@ -4,16 +4,41 @@ from datetime import datetime, timedelta
 import time
 
 def setup_db(db_name="planta_fp1.db"):
-    conn = sqlite3.connect(db_name)
+    conn = sqlite3.connect(db_name, timeout=30.0)
     cursor = conn.cursor()
     cursor.execute('DROP TABLE IF EXISTS Camiones')
     cursor.execute('DROP TABLE IF EXISTS Andenes')
+    cursor.execute('DROP TABLE IF EXISTS Gateways')
+    cursor.execute('DROP TABLE IF EXISTS Sensores_IoT')
 
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS Andenes (
         id_anden INTEGER PRIMARY KEY,
         estado TEXT NOT NULL,
         camion_actual_id INTEGER
+    )
+    ''')
+
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS Gateways (
+        id_gateway TEXT PRIMARY KEY,
+        modelo TEXT,
+        estado TEXT,
+        ultima_conexion DATETIME
+    )
+    ''')
+
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS Sensores_IoT (
+        deveui TEXT PRIMARY KEY,
+        id_anden INTEGER,
+        modelo TEXT,
+        temperatura REAL,
+        movimiento BOOLEAN,
+        bateria INTEGER,
+        rssi INTEGER,
+        ultima_lectura DATETIME,
+        FOREIGN KEY(id_anden) REFERENCES Andenes(id_anden)
     )
     ''')
 
@@ -51,6 +76,20 @@ def setup_db(db_name="planta_fp1.db"):
     if cursor.fetchone()[0] == 0:
         for i in range(1, 11):
             cursor.execute('INSERT INTO Andenes (id_anden, estado) VALUES (?, ?)', (i, 'Disponible'))
+            
+    cursor.execute("SELECT COUNT(*) FROM Gateways")
+    if cursor.fetchone()[0] == 0:
+        cursor.execute("INSERT INTO Gateways (id_gateway, modelo, estado, ultima_conexion) VALUES (?, ?, ?, ?)", 
+                       ('GW-LPS8N-01', 'Dragino LPS8N-4G-US915', 'Activo', datetime.now()))
+        
+    cursor.execute("SELECT COUNT(*) FROM Sensores_IoT")
+    if cursor.fetchone()[0] == 0:
+        for i in range(1, 11):
+            deveui = f"383930{i:02d}000000{i:02d}"
+            cursor.execute('''
+            INSERT INTO Sensores_IoT (deveui, id_anden, modelo, temperatura, movimiento, bateria, rssi, ultima_lectura)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (deveui, i, 'MOKOSmart LW007-PIR', -20.0, False, 100, -65, datetime.now()))
     
     conn.commit()
     return conn
@@ -170,6 +209,34 @@ def run_simulation():
                 nueva_temp = round(nueva_temp, 1)
 
             cursor.execute("UPDATE Camiones SET hora_inicio_anden = ?, temperatura = ? WHERE id_camion = ?", (nuevo_inicio, nueva_temp, cid))
+
+        # 5. Simular recepción de datos LoRaWAN (Gateway y Sensores)
+        cursor.execute("UPDATE Gateways SET ultima_conexion = ? WHERE id_gateway = 'GW-LPS8N-01'", (now,))
+        
+        cursor.execute("SELECT id_anden, estado, camion_actual_id FROM Andenes")
+        andenes_estado = cursor.fetchall()
+        
+        for anden_id, estado, camion_id in andenes_estado:
+            # Detecta movimiento constantemente si el anden está ocupado (operario trabajando), esporádicamente si está libre
+            movimiento = True if estado == 'Ocupado' else random.random() < 0.05
+            
+            if estado == 'Ocupado':
+                cursor.execute("SELECT temperatura FROM Camiones WHERE id_camion = ?", (camion_id,))
+                res = cursor.fetchone()
+                temp_sensor = res[0] if res and res[0] is not None else random.uniform(-18.0, -15.0)
+                temp_sensor = round(temp_sensor, 1)
+            else:
+                # Andén desocupado: Sensor en precámara a -8°C (Monitoreo de cadena de frío pausado)
+                temp_sensor = None
+                
+            bateria = random.randint(85, 100) # Simulación de porcentaje de batería del sensor
+            rssi = random.randint(-95, -50)   # Simulación de intensidad de señal LoRaWAN
+            
+            cursor.execute('''
+            UPDATE Sensores_IoT 
+            SET temperatura = ?, movimiento = ?, bateria = ?, rssi = ?, ultima_lectura = ?
+            WHERE id_anden = ?
+            ''', (temp_sensor, movimiento, bateria, rssi, now, anden_id))
 
         conn.commit()
         time.sleep(3)

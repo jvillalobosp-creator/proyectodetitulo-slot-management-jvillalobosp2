@@ -161,7 +161,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 def setup_db():
-    conn = sqlite3.connect("planta_fp1.db")
+    conn = sqlite3.connect("planta_fp1.db", timeout=30.0)
     return conn
 
 conn = setup_db()

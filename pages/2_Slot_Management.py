@@ -154,7 +154,7 @@ if not st.session_state.authenticated:
                 st.error("❌ Contraseña incorrecta")
     with col2:
         if st.button("Soy Transportista", use_container_width=True):
-            st.switch_page(os.path.join("pages", "1_Portal_Transportistas.py"))
+            st.switch_page("pages/1_Portal_Transportistas.py")
             
     st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
@@ -173,7 +173,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 def setup_db():
-    conn = sqlite3.connect("planta_fp1.db")
+    conn = sqlite3.connect("planta_fp1.db", timeout=30.0)
     cursor = conn.cursor()
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS Agendamientos (

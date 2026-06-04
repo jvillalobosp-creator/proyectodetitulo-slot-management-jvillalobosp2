@@ -41,7 +41,7 @@ if not st.session_state.authenticated:
         st.write("¿Eres una empresa de transporte o un chofer buscando agendar una cita de carga/descarga?")
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button("Ir al Portal de Transportistas ➡️", use_container_width=True):
-            st.switch_page(os.path.join("pages", "1_Portal_Transportistas.py"))
+            st.switch_page("pages/1_Portal_Transportistas.py")
         st.markdown('</div>', unsafe_allow_html=True)
         
     st.stop() # Detiene la ejecución del dashboard si no está logueado
@@ -82,7 +82,7 @@ st.markdown("""
 
 def get_db_connection():
     try:
-        conn = sqlite3.connect("planta_fp1.db")
+        conn = sqlite3.connect("planta_fp1.db", timeout=30.0)
         return conn
     except:
         return None
@@ -157,6 +157,7 @@ for _ in range(5):
     try:
         df_andenes = pd.read_sql_query("SELECT * FROM Andenes", conn)
         df_camiones = pd.read_sql_query("SELECT * FROM Camiones", conn)
+        df_sensores = pd.read_sql_query("SELECT * FROM Sensores_IoT", conn)
         tablas_listas = True
         break
     except:
@@ -366,43 +367,76 @@ for i in range(1, 11):
             else:
                 st.progress(progress, text="Tiempo consumido del KPI máximo")
                 
-            st.markdown("---")
-            # --- Módulo IoT (Simulado) ---
-            st.markdown("### 📹 Módulo IoT: Sensores y Monitoreo de Operación")
-            
-            # Simular estado del sensor de movimiento basado en el tiempo (estable por minuto)
-            seed_val = i * 100 + ahora.minute
-            random.seed(seed_val)
-            hay_movimiento = random.random() > 0.15 # 85% de probabilidad de tener actividad
-            random.seed() # Reset seed
-            
-            col_iot1, col_iot2 = st.columns(2)
-            
-            with col_iot1:
-                st.markdown("<div style='background-color:#1E1E2E; padding:15px; border-radius:8px; height:100%; border: 1px solid #333;'>", unsafe_allow_html=True)
-                st.markdown("#### 📡 Sensor de Movimiento Infrarrojo")
-                if hay_movimiento:
-                    st.markdown("<div style='color:#4CAF50; font-size:18px;'><b>🟢 DETECTANDO ACTIVIDAD (Operación en curso)</b></div>", unsafe_allow_html=True)
-                    st.write("Registrando movimiento constante de personal y maquinaria en la zona de carga.")
-                else:
-                    st.markdown("<div style='color:#FF5252; font-size:18px; animation: blinker 1s linear infinite;'><b>🔴 ALERTA: TIEMPO MUERTO DETECTADO</b></div>", unsafe_allow_html=True)
-                    st.write("⚠️ El sensor no registra movimiento en los últimos minutos. Riesgo de interrupción operativa.")
-                st.markdown("</div>", unsafe_allow_html=True)
-                
-            with col_iot2:
-                st.markdown("<div style='background-color:#1E1E2E; padding:15px; border-radius:8px; height:100%; border: 1px solid #333;'>", unsafe_allow_html=True)
-                st.markdown("#### 📸 Cámara IP - Feed en Vivo")
-                if hay_movimiento:
-                    # Usamos un placeholder verde/celeste para simular el feed activo
-                    st.markdown('<div style="background-color:#2D2D3F; color:#00E5FF; text-align:center; padding:30px; border: 2px dashed #00E5FF; border-radius: 5px;"><b>[ 🔴 REC ] FEED CÁMARA ACTIVO - MOVIMIENTO DETECTADO</b></div>', unsafe_allow_html=True)
-                else:
-                    # Placeholder rojo para cuando hay inactividad
-                    st.markdown('<div style="background-color:#382525; color:#FF5252; text-align:center; padding:30px; border: 2px dashed #FF5252; border-radius: 5px;"><b>[ ⏸️ PAUSA ] FEED CÁMARA - SIN ACTIVIDAD RECIENTE</b></div>', unsafe_allow_html=True)
-                st.markdown("</div>", unsafe_allow_html=True)
-                
         else:
             st.success(f"El Andén {i} se encuentra actualmente **DISPONIBLE** y listo para recibir un nuevo camión.")
             st.info("Revisando asignaciones automáticas en el patio...")
+
+        st.markdown("---")
+        # --- Módulo IoT LoRaWAN (Real DB) ---
+        st.markdown("### 📡 Módulo IoT: Monitoreo LoRaWAN (Dragino LPS8N & MOKOSmart LW007-PIR)")
+        
+        if 'df_sensores' in locals() and not df_sensores.empty:
+            sensor_data = df_sensores[df_sensores['id_anden'] == i].iloc[0]
+            hay_movimiento = bool(sensor_data['movimiento'])
+            temp_sensor = sensor_data['temperatura']
+            bateria = sensor_data['bateria']
+            rssi = sensor_data['rssi']
+            
+            # ultima_lectura puede venir como string o datetime, dependiendo de la BD y SQLite
+            ultima_lectura_str = sensor_data['ultima_lectura']
+            try:
+                ultima_lectura = pd.to_datetime(ultima_lectura_str)
+                segundos_inactivo = int((ahora - ultima_lectura).total_seconds())
+            except:
+                segundos_inactivo = 0
+                
+            estado_enlace = "🟢 En Línea" if segundos_inactivo < 15 else "🔴 Con Retraso"
+            
+            col_iot1, col_iot2, col_iot3 = st.columns(3)
+            
+            with col_iot1:
+                st.markdown("<div style='background-color:#1E1E2E; padding:15px; border-radius:8px; height:100%; border: 1px solid #333;'>", unsafe_allow_html=True)
+                st.markdown("#### 🌡️ Sensor Temperatura")
+                
+                if pd.isna(temp_sensor) or temp_sensor is None:
+                    st.markdown("<div style='font-size:24px; font-weight:bold; color:#A0A0B0; margin-top:10px;'>En Reposo</div>", unsafe_allow_html=True)
+                    st.markdown("<div style='color:#A0A0B0; font-size:14px; margin-top:5px;'>Precámara (-8°C)</div>", unsafe_allow_html=True)
+                else:
+                    color_temp = "#4CAF50" # Verde
+                    if temp_sensor > -15.0: color_temp = "#FFC107" # Amarillo
+                    if temp_sensor > -12.0: color_temp = "#FF5252" # Rojo
+                    
+                    st.markdown(f"<div style='font-size:32px; font-weight:bold; color:{color_temp}; margin-top:10px;'>{temp_sensor:.1f} °C</div>", unsafe_allow_html=True)
+                    if temp_sensor > -15.0:
+                        st.markdown("<div style='color:#FFC107; font-size:14px; margin-top:5px;'>⚠️ Acercándose a límite (-15°C)</div>", unsafe_allow_html=True)
+                    else:
+                        st.markdown("<div style='color:#4CAF50; font-size:14px; margin-top:5px;'>✅ Temperatura óptima</div>", unsafe_allow_html=True)
+                st.markdown("</div>", unsafe_allow_html=True)
+
+            with col_iot2:
+                st.markdown("<div style='background-color:#1E1E2E; padding:15px; border-radius:8px; height:100%; border: 1px solid #333;'>", unsafe_allow_html=True)
+                st.markdown("#### 🚶 Sensor de Movimiento (PIR)")
+                if hay_movimiento:
+                    st.markdown("<div style='color:#4CAF50; font-size:18px; margin-top:15px;'><b>🟢 DETECTANDO ACTIVIDAD</b></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='color:#A0A0B0; font-size:14px; margin-top:5px;'>Registrando presencia de personal/maquinaria.</div>", unsafe_allow_html=True)
+                else:
+                    st.markdown("<div style='color:#FF5252; font-size:18px; margin-top:15px;'><b>🔴 SIN MOVIMIENTO</b></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='color:#A0A0B0; font-size:14px; margin-top:5px;'>Área despejada.</div>", unsafe_allow_html=True)
+                st.markdown("</div>", unsafe_allow_html=True)
+                
+            with col_iot3:
+                st.markdown("<div style='background-color:#1E1E2E; padding:15px; border-radius:8px; height:100%; border: 1px solid #333;'>", unsafe_allow_html=True)
+                st.markdown("#### 🌐 Enlace LoRaWAN")
+                st.markdown(f"<div style='margin-top:10px; font-size:15px;'><b>Estado:</b> {estado_enlace}</div>", unsafe_allow_html=True)
+                
+                color_bat = "#4CAF50" if bateria > 20 else "#FF5252"
+                st.markdown(f"<div style='margin-top:5px; font-size:15px;'><b>🔋 Batería:</b> <span style='color:{color_bat};'>{bateria}%</span></div>", unsafe_allow_html=True)
+                
+                color_rssi = "#4CAF50" if rssi > -85 else ("#FFC107" if rssi > -105 else "#FF5252")
+                st.markdown(f"<div style='margin-top:5px; font-size:15px;'><b>📶 Señal (RSSI):</b> <span style='color:{color_rssi};'>{rssi} dBm</span></div>", unsafe_allow_html=True)
+                st.markdown("</div>", unsafe_allow_html=True)
+        else:
+            st.info("Buscando señal de sensores IoT...")
 
 # Footer del creador
 st.markdown("---")
@@ -415,5 +449,5 @@ st.markdown(
 )
 
 # Autorefresh cada 3 segundos
-time.sleep(3)
+time.sleep(10)
 st.rerun()
