@@ -77,6 +77,19 @@ st.markdown("""
     .val-normal { color: #4CAF50;}
     .val-warning { color: #FFC107;}
     .val-critical { color: #FF5252;}
+    
+    @keyframes pulse-warning {
+        0% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7); }
+        70% { box-shadow: 0 0 0 15px rgba(255, 193, 7, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); }
+    }
+    @keyframes pulse-danger {
+        0% { box-shadow: 0 0 0 0 rgba(255, 82, 82, 0.8); }
+        70% { box-shadow: 0 0 0 20px rgba(255, 82, 82, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(255, 82, 82, 0); }
+    }
+    .alert-box-warning { animation: pulse-warning 2s infinite; border: 1px solid #FFC107 !important; }
+    .alert-box-danger { animation: pulse-danger 1s infinite; border: 2px solid #FF5252 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -301,16 +314,19 @@ for i in range(1, 11):
                 color_clase = "val-critical"
                 alerta_bg = "#382525"
                 border_color = "#FF5252"
+                extra_css = "alert-box-danger"
             elif mins >= 90:
                 alerta_texto = "⚠️ PRECAUCIÓN - SUPERVISAR DESEMPEÑO"
                 color_clase = "val-warning"
                 alerta_bg = "#332D20"
                 border_color = "#FFC107"
+                extra_css = "alert-box-warning"
             else:
                 alerta_texto = "✅ OPERACIÓN NORMAL"
                 color_clase = "val-normal"
                 alerta_bg = "#1b1b28"
                 border_color = "#4CAF50"
+                extra_css = ""
 
             # Alarma de Cadena de Frío
             frio_alerta = ""
@@ -326,7 +342,7 @@ for i in range(1, 11):
                 
             st.markdown(f"""
             {frio_alerta}
-            <div style="background-color: {alerta_bg}; border-left: 6px solid {border_color}; padding: 20px; border-radius: 8px;">
+            <div class="{extra_css}" style="background-color: {alerta_bg}; border-left: 6px solid {border_color}; padding: 20px; border-radius: 8px;">
                 <h3 style="margin-top:0;">Estado: {alerta_texto}</h3>
                 <div style="display:flex; justify-content:space-between;">
                     <div>
@@ -373,7 +389,7 @@ for i in range(1, 11):
 
         st.markdown("---")
         # --- Módulo IoT LoRaWAN (Real DB) ---
-        st.markdown("### 📡 Módulo IoT: Monitoreo LoRaWAN (Dragino LPS8N & MOKOSmart LW007-PIR)")
+        st.markdown(f"### 📡 Módulo IoT: Monitoreo LoRaWAN (lps8v2 gateway lorawan 4g lte & MOKOSmart LW007-PIR - Tag {i})")
         
         if 'df_sensores' in locals() and not df_sensores.empty:
             sensor_data = df_sensores[df_sensores['id_anden'] == i].iloc[0]
@@ -396,11 +412,11 @@ for i in range(1, 11):
             
             with col_iot1:
                 st.markdown("<div style='background-color:#1E1E2E; padding:15px; border-radius:8px; height:100%; border: 1px solid #333;'>", unsafe_allow_html=True)
-                st.markdown("#### 🌡️ Sensor Temperatura")
+                st.markdown(f"#### 🌡️ Sensor Temperatura (Tag {i})")
                 
                 if pd.isna(temp_sensor) or temp_sensor is None:
                     st.markdown("<div style='font-size:24px; font-weight:bold; color:#A0A0B0; margin-top:10px;'>En Reposo</div>", unsafe_allow_html=True)
-                    st.markdown("<div style='color:#A0A0B0; font-size:14px; margin-top:5px;'>Precámara (-8°C)</div>", unsafe_allow_html=True)
+                    st.markdown("<div style='color:#A0A0B0; font-size:14px; margin-top:5px;'>Precámara (5°C)</div>", unsafe_allow_html=True)
                 else:
                     color_temp = "#4CAF50" # Verde
                     if temp_sensor > -15.0: color_temp = "#FFC107" # Amarillo
@@ -415,7 +431,7 @@ for i in range(1, 11):
 
             with col_iot2:
                 st.markdown("<div style='background-color:#1E1E2E; padding:15px; border-radius:8px; height:100%; border: 1px solid #333;'>", unsafe_allow_html=True)
-                st.markdown("#### 🚶 Sensor de Movimiento (PIR)")
+                st.markdown(f"#### 🚶 Sensor de Movimiento (PIR) - Tag {i}")
                 if hay_movimiento:
                     st.markdown("<div style='color:#4CAF50; font-size:18px; margin-top:15px;'><b>🟢 DETECTANDO ACTIVIDAD</b></div>", unsafe_allow_html=True)
                     st.markdown("<div style='color:#A0A0B0; font-size:14px; margin-top:5px;'>Registrando presencia de personal/maquinaria.</div>", unsafe_allow_html=True)

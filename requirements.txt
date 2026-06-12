@@ -4,3 +4,5 @@ qrcode
 pillow
 streamlit-calendar
 requests
+python-docx
+PyPDF2

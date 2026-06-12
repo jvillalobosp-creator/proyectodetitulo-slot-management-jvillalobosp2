@@ -80,7 +80,7 @@ def setup_db(db_name="planta_fp1.db"):
     cursor.execute("SELECT COUNT(*) FROM Gateways")
     if cursor.fetchone()[0] == 0:
         cursor.execute("INSERT INTO Gateways (id_gateway, modelo, estado, ultima_conexion) VALUES (?, ?, ?, ?)", 
-                       ('GW-LPS8N-01', 'Dragino LPS8N-4G-US915', 'Activo', datetime.now()))
+                       ('GW-LPS8N-01', 'lps8v2 gateway lorawan 4g lte', 'Activo', datetime.now()))
         
     cursor.execute("SELECT COUNT(*) FROM Sensores_IoT")
     if cursor.fetchone()[0] == 0:
@@ -226,7 +226,7 @@ def run_simulation():
                 temp_sensor = res[0] if res and res[0] is not None else random.uniform(-18.0, -15.0)
                 temp_sensor = round(temp_sensor, 1)
             else:
-                # Andén desocupado: Sensor en precámara a -8°C (Monitoreo de cadena de frío pausado)
+                # Andén desocupado: Sensor en precámara a 5°C (Monitoreo de cadena de frío pausado)
                 temp_sensor = None
                 
             bateria = random.randint(85, 100) # Simulación de porcentaje de batería del sensor
