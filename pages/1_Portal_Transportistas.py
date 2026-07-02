@@ -267,7 +267,7 @@ with col_der:
     st.subheader("📲 Escanea y Agenda")
     st.write("Si lo prefieres, escanea este QR para llenar el formulario directamente desde tu celular.")
     
-    url_portal = f"http://{get_local_ip()}:8502"
+    url_portal = "https://proyectodetitulo-slot-management-jvillalobosp2-gwoohdfkxqqvjru.streamlit.app/Portal_Transportistas"
     
     qr = qrcode.QRCode(
         version=1,
