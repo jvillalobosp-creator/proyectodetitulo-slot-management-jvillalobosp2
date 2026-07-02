@@ -300,12 +300,10 @@ for i in range(1, 11):
             carga = camion_info['tipo_carga']
             cliente = camion_info['cliente']
             patente = camion_info['patente']
-            equipo = camion_info['equipo_asignado']
             temperatura = camion_info.get('temperatura', -18.0)
             if pd.isna(temperatura): temperatura = -18.0
             
             # Variables propuestas para mejorar monitoreo
-            velocidad = "2.3 pallets/min" if carga == "Paletizada" else "0.8 bultos/min"
             eta_mins = max(0, 150 - mins) if proceso == 'Despacho' else max(0, 45 - mins)
             
             # Alarmas visuales (KPI de tiempo)
@@ -350,10 +348,6 @@ for i in range(1, 11):
                         <p><b>🏢 Cliente:</b> {cliente}</p>
                         <p><b>🔄 Proceso:</b> {proceso} de Carga {carga}</p>
                     </div>
-                    <div>
-                        <p><b>🚜 Equipo Asignado:</b> {equipo}</p>
-                        <p><b>⚡ Velocidad Estimada:</b> {velocidad}</p>
-                    </div>
                 </div>
                 <div class="metric-row">
                     <div class="metric-item">
@@ -378,10 +372,10 @@ for i in range(1, 11):
             
             # Progress bar para visualización rápida del tiempo (Max 150 mins)
             progress = min(mins / 150.0, 1.0)
-            if progress > 0.8:
-                st.progress(progress, text="Tiempo consumido del KPI máximo")
-            else:
-                st.progress(progress, text="Tiempo consumido del KPI máximo")
+            porcentaje = progress * 100
+            texto_progreso = f"Tiempo consumido del KPI máximo ({porcentaje:.1f}%)"
+            
+            st.progress(progress, text=texto_progreso)
                 
         else:
             st.success(f"El Andén {i} se encuentra actualmente **DISPONIBLE** y listo para recibir un nuevo camión.")

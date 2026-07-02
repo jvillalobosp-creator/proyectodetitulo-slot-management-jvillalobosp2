@@ -67,7 +67,6 @@ def setup_db(db_name="planta_fp1.db"):
         hora_fin_anden DATETIME,
         estado TEXT NOT NULL,
         anden_asignado INTEGER,
-        equipo_asignado TEXT,
         temperatura REAL
     )
     ''')
@@ -101,7 +100,6 @@ def run_simulation():
     conn = setup_db()
     cursor = conn.cursor()
     clientes = ['LANDES', 'KIENER', 'VIMA FOODS', 'MB MARTIN BROWER', 'CARGILL', 'ALIMENTOS CARNICOS', 'CALYPSO']
-    equipos = ['Grúa Horquilla 1', 'Grúa Horquilla 2', 'Montacargas 1', 'Cuadrilla Manual', 'Apilador Eléctrico']
     
     print("Iniciando simulador dinámico... (Presiona Ctrl+C para detener)")
     print("El simulador está actualizando la base de datos cada 3 segundos.")
@@ -124,10 +122,10 @@ def run_simulation():
             
             temp_inicial = round(random.uniform(-20.0, -17.0), 1)
             cursor.execute('''
-            INSERT INTO Camiones (patente, cliente, tipo_operacion, tipo_carga, hora_llegada, hora_inicio_anden, estado, anden_asignado, equipo_asignado, temperatura)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO Camiones (patente, cliente, tipo_operacion, tipo_carga, hora_llegada, hora_inicio_anden, estado, anden_asignado, temperatura)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (generate_patente(), random.choice(clientes), tipo_op, tipo_carga, 
-                  inicio_anden - timedelta(minutes=10), inicio_anden, 'En Andén', i, random.choice(equipos), temp_inicial))
+                  inicio_anden - timedelta(minutes=10), inicio_anden, 'En Andén', i, temp_inicial))
             camion_id = cursor.lastrowid
             cursor.execute('UPDATE Andenes SET estado = "Ocupado", camion_actual_id = ? WHERE id_anden = ?', (camion_id, i))
             
@@ -187,8 +185,8 @@ def run_simulation():
         
         for (camion_id, tipo_carga), (anden_id,) in zip(en_patio, disponibles):
             temp_inicial = round(random.uniform(-20.0, -17.0), 1)
-            cursor.execute("UPDATE Camiones SET estado = 'En Andén', anden_asignado = ?, hora_inicio_anden = ?, equipo_asignado = ?, temperatura = ? WHERE id_camion = ?", 
-                           (anden_id, now, random.choice(equipos), temp_inicial, camion_id))
+            cursor.execute("UPDATE Camiones SET estado = 'En Andén', anden_asignado = ?, hora_inicio_anden = ?, temperatura = ? WHERE id_camion = ?", 
+                           (anden_id, now, temp_inicial, camion_id))
             cursor.execute("UPDATE Andenes SET estado = 'Ocupado', camion_actual_id = ? WHERE id_anden = ?", (camion_id, anden_id))
             print(f"Camión {camion_id} asignado al Andén {anden_id}.")
         
